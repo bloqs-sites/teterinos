@@ -65,8 +65,8 @@ impl Tetromino {
         let n = self.stride;
         let m = self.shape.len() as u8 / n;
 
-        let new_n = ((m as f32 * sin).abs() + (n as f32 * cos).abs()).round() as u8;
-        let new_m = ((m as f32 * cos).abs() + (n as f32 * sin).abs()).round() as u8;
+        let new_n = ((m as f32 * sin).abs() + (n as f32 * cos).abs()).ceil() as u8;
+        let new_m = ((m as f32 * cos).abs() + (n as f32 * sin).abs()).ceil() as u8;
 
         let mut new_shape = vec![false; (new_n * new_m) as usize];
 
