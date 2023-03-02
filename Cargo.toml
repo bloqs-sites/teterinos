@@ -3,6 +3,9 @@ name = "teterinos"
 version = "0.1.0"
 authors = ["torres-developer <torres.dev@disroot.org>"]
 edition = "2018"
+description = "To build teterinos for all user interfaces that might need them"
+repository = "https://github.com/bloqs-sites/teterinos/"
+license = "GPL-3.0-or-later"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -23,6 +26,7 @@ console_error_panic_hook = { version = "0.1.6", optional = true }
 # compared to the default allocator's ~10K. It is slower than the default
 # allocator, however.
 wee_alloc = { version = "0.4.5", optional = true }
+js-sys = "0.3.61"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"

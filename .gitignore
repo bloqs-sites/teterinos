@@ -1,3 +1,5 @@
+www/
+
 /target
 **/*.rs.bk
 Cargo.lock
