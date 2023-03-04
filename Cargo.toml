@@ -1,10 +1,10 @@
 [package]
-name = "teterinos"
+name = "tetrinos"
 version = "0.1.0"
 authors = ["torres-developer <torres.dev@disroot.org>"]
 edition = "2018"
-description = "To build teterinos for all user interfaces that might need them"
-repository = "https://github.com/bloqs-sites/teterinos/"
+description = "To build tetrinos for all user interfaces that might need them"
+repository = "https://github.com/bloqs-sites/tetrinos/"
 license = "GPL-3.0-or-later"
 
 [lib]
