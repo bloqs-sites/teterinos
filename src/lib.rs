@@ -4,8 +4,10 @@ use std::f32::consts::PI;
 use std::fmt::Display;
 
 extern crate fixedbitset;
+extern crate web_sys;
 use fixedbitset::FixedBitSet;
 use wasm_bindgen::prelude::*;
+use web_sys::console;
 
 use js_sys::Error;
 use js_sys::Math::{floor, random};
@@ -26,6 +28,13 @@ pub fn greet(name: &str) {
     alert(&format!("Hello, {}!", name));
 }
 
+// A macro to provide `println!(..)`-style syntax for `console.log` logging.
+macro_rules! log {
+    ( $( $t:tt )* ) => {
+        console::log_1(&format!( $( $t )* ).into());
+    }
+}
+
 const UP: u8 = 0;
 const DOWN: u8 = 1;
 const LEFT: u8 = 2;
@@ -41,6 +50,23 @@ pub struct Tetromino {
     lvl: u8,
     shape: FixedBitSet,
     stride: u8,
+}
+
+pub struct Timer<'a> {
+    name: &'a str,
+}
+
+impl<'a> Timer<'a> {
+    pub fn new(name: &'a str) -> Timer<'a> {
+        console::time_with_label(name);
+        Timer { name }
+    }
+}
+
+impl<'a> Drop for Timer<'a> {
+    fn drop(&mut self) {
+        console::time_end_with_label(self.name);
+    }
 }
 
 #[wasm_bindgen]
@@ -90,9 +116,9 @@ impl Tetromino {
 
                 let j = (new_x + new_y * new_n as f32).round().abs() as f32;
 
-                //alert(&format!("[{x};{y}]\t[{new_x};{new_y}]"));
+                //log!("[{x};{y}]\t[{new_x};{new_y}]");
 
-                //alert(&format!("{j}"));
+                //log!("{j}");
                 new_shape.set(j as usize, true);
             }
         }
@@ -124,7 +150,7 @@ impl Display for Tetromino {
         for row in self.shape.as_slice().chunks(self.stride as usize) {
             write!(f, "{}:", self.lvl)?;
             for &bloq in row {
-                write!(f, "{bloq:b}\n")?;
+                write!(f, "{bloq:b}")?;
             }
             write!(f, ":\n")?;
         }
@@ -147,6 +173,8 @@ pub struct Game {
 #[wasm_bindgen]
 impl Game {
     pub fn new(w: u8, h: u8) -> Self {
+        utils::set_panic_hook();
+
         let f = vec![None; (w * h) as usize];
 
         Self {
@@ -156,7 +184,21 @@ impl Game {
         }
     }
 
-    pub fn put_tetrino(&mut self, lvl: Option<u8>) -> Result<bool, Error> {
+    pub fn fill(&mut self) {
+        let _time = Timer::new("Game::fill");
+
+        let mut i = self.field.len() as u8;
+        loop {
+            match self.put_tetrino(None) {
+                Err(_) => break,
+                Ok(n) => i -= n,
+            }
+        }
+
+        log!("{i}");
+    }
+
+    pub fn put_tetrino(&mut self, lvl: Option<u8>) -> Result<u8, Error> {
         let lvl = lvl.unwrap_or(rnd());
 
         let mut shape = self.rnd_tetrino(lvl)?;
@@ -164,22 +206,6 @@ impl Game {
         for _ in 0..floor(random() * 4.0) as u8 {
             shape.rotate_deg(Some(90.0));
         }
-
-        alert(&format!(
-            "i={}\tj={}\tk={}\nl={}",
-            self.height() - shape.height(),
-            self.width() - shape.width(),
-            shape.height(),
-            shape.width()
-        ));
-        alert(&format!(
-            "i={}\tj={}\tk={}\nl={}",
-            self.height(),
-            self.width(),
-            shape.height(),
-            shape.width()
-        ));
-        alert(&shape.render());
 
         for _ in 0..4 {
             for i in 0..self.height()
@@ -202,7 +228,7 @@ impl Game {
                             if k == shape.height() - 1 && l == shape.width() - 1 {
                                 self.put_shape(Pos { x: j, y: i }, shape);
 
-                                return Ok(true);
+                                return Ok(lvl);
                             }
                         }
                     }
@@ -228,6 +254,8 @@ impl Game {
         }
 
         self.id = std::char::from_u32(self.id as u32 + 1).unwrap_or(self.id);
+
+        log!("{}", self.render());
     }
 
     pub fn rnd_tetrino(&self, lvl: u8) -> Result<Tetromino, Error> {
