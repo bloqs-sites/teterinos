@@ -3,6 +3,8 @@ mod utils;
 use std::f32::consts::PI;
 use std::fmt::Display;
 
+extern crate fixedbitset;
+use fixedbitset::FixedBitSet;
 use wasm_bindgen::prelude::*;
 
 use js_sys::Error;
@@ -37,7 +39,7 @@ struct Pos {
 #[wasm_bindgen]
 pub struct Tetromino {
     lvl: u8,
-    shape: Vec<bool>,
+    shape: FixedBitSet,
     stride: u8,
 }
 
@@ -73,7 +75,7 @@ impl Tetromino {
         let new_n = ((m as f32 * sin).abs() + (n as f32 * cos).abs()).round() as u8;
         let new_m = ((m as f32 * cos).abs() + (n as f32 * sin).abs()).round() as u8;
 
-        let mut new_shape = vec![false; (new_n * new_m) as usize];
+        let mut new_shape = FixedBitSet::with_capacity((new_n * new_m) as usize);
 
         for y in 0..m {
             for x in 0..n {
@@ -91,7 +93,7 @@ impl Tetromino {
                 //alert(&format!("[{x};{y}]\t[{new_x};{new_y}]"));
 
                 //alert(&format!("{j}"));
-                new_shape[j as usize] = true;
+                new_shape.set(j as usize, true);
             }
         }
 
@@ -122,7 +124,7 @@ impl Display for Tetromino {
         for row in self.shape.as_slice().chunks(self.stride as usize) {
             write!(f, "{}:", self.lvl)?;
             for &bloq in row {
-                write!(f, "{}", if bloq { "#" } else { " " })?;
+                write!(f, "{bloq:b}\n")?;
             }
             write!(f, ":\n")?;
         }
@@ -163,23 +165,37 @@ impl Game {
             shape.rotate_deg(Some(90.0));
         }
 
-        alert(&format!("i={}\tj={}\tk={}\nl={}",
-                       self.height() - shape.height(),
-                       self.width() - shape.width(),
-                       shape.height(), shape.width()));
-        alert(&format!("i={}\tj={}\tk={}\nl={}",
-                       self.height(), self.width(),
-                       shape.height(), shape.width()));
+        alert(&format!(
+            "i={}\tj={}\tk={}\nl={}",
+            self.height() - shape.height(),
+            self.width() - shape.width(),
+            shape.height(),
+            shape.width()
+        ));
+        alert(&format!(
+            "i={}\tj={}\tk={}\nl={}",
+            self.height(),
+            self.width(),
+            shape.height(),
+            shape.width()
+        ));
         alert(&shape.render());
 
         for _ in 0..4 {
-            for i in 0..self.height()/* - shape.height()*/ {
-                'next: for j in 0..self.width()/* - shape.width()*/ {
+            for i in 0..self.height()
+            /* - shape.height()*/
+            {
+                'next: for j in 0..self.width()
+                /* - shape.width()*/
+                {
                     for k in 0..shape.height() {
                         for l in 0..shape.width() {
                             let pos: usize = (j + l + (i + k) * self.width()) as usize;
 
-                            if self.field.len() <= pos || (self.field[pos].is_some() && shape.test_pos((l + k * shape.width()) as usize)){
+                            if self.field.len() <= pos
+                                || (self.field[pos].is_some()
+                                    && shape.test_pos((l + k * shape.width()) as usize))
+                            {
                                 continue 'next;
                             }
 
@@ -223,7 +239,7 @@ impl Game {
         let mw = if lvl > self.stride { self.stride } else { lvl };
         let mh = if lvl > gh { gh } else { lvl };
 
-        let mut area: Vec<bool> = vec![false; (mw * mh) as usize];
+        let mut area = FixedBitSet::with_capacity((mw * mh) as usize);
 
         let mut i = 0;
 
@@ -236,7 +252,7 @@ impl Game {
             let pos: usize = (tx + ty * mw) as usize;
 
             if area[pos] != true {
-                area[pos] = true;
+                area.set(pos, true);
                 i += 1;
             }
 
@@ -293,13 +309,13 @@ impl Game {
 
         let cap = (tw + 1) * (th + 1);
 
-        let mut shape: Vec<bool> = vec![false; cap as usize];
+        let mut shape = FixedBitSet::with_capacity(cap as usize);
 
         for j in 0..=th {
             for i in 0..=tw {
                 let pos = i + j * (tw + 1);
                 let apos = i + j * mw;
-                shape[pos as usize] = area[apos as usize]
+                shape.set(pos as usize, area[apos as usize]);
             }
         }
 
