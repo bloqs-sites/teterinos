@@ -139,9 +139,9 @@ const MAX: u8 = 8;
 
 #[wasm_bindgen]
 pub struct Game {
-    id: usize,
+    id: char,
     stride: u8,
-    field: Vec<Option<usize>>,
+    field: Vec<Option<char>>,
 }
 
 #[wasm_bindgen]
@@ -150,16 +150,16 @@ impl Game {
         let f = vec![None; (w * h) as usize];
 
         Self {
-            id: 1,
+            id: 'A',
             stride: w,
             field: f,
         }
     }
 
-    pub fn put_teterino(&mut self, lvl: Option<u8>) -> Result<bool, Error> {
+    pub fn put_tetrino(&mut self, lvl: Option<u8>) -> Result<bool, Error> {
         let lvl = lvl.unwrap_or(rnd());
 
-        let mut shape = self.rnd_teterino(lvl)?;
+        let mut shape = self.rnd_tetrino(lvl)?;
 
         for _ in 0..floor(random() * 4.0) as u8 {
             shape.rotate_deg(Some(90.0));
@@ -212,7 +212,7 @@ impl Game {
             shape.rotate_deg(Some(90.0));
         }
 
-        Err(Error::new(&format!("could not insert teterino lvl {lvl}")))
+        Err(Error::new(&format!("could not insert tetrino lvl {lvl}")))
     }
 
     fn put_shape(&mut self, coords: Pos, shape: Tetromino) {
@@ -227,10 +227,10 @@ impl Game {
             }
         }
 
-        self.id += 1;
+        self.id = std::char::from_u32(self.id as u32 + 1).unwrap_or(self.id);
     }
 
-    pub fn rnd_teterino(&self, lvl: u8) -> Result<Tetromino, Error> {
+    pub fn rnd_tetrino(&self, lvl: u8) -> Result<Tetromino, Error> {
         if lvl < MIN || lvl > MAX {
             return Err(Error::new("invalid lvl"));
         }
@@ -343,7 +343,7 @@ impl Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for row in self.field.as_slice().chunks(self.stride as usize) {
             for &bloq in row {
-                write!(f, "{}", bloq.unwrap_or(0))?;
+                write!(f, "{}", bloq.unwrap_or(' '))?;
             }
             write!(f, "\n")?;
         }
