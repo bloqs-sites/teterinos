@@ -29,6 +29,11 @@ const DOWN: u8 = 1;
 const LEFT: u8 = 2;
 const RIGHT: u8 = 3;
 
+struct Pos {
+    x: u8,
+    y: u8,
+}
+
 #[wasm_bindgen]
 pub struct Tetromino {
     lvl: u8,
@@ -47,7 +52,7 @@ impl Tetromino {
     }
 
     pub fn rotate_rad(&mut self, tetha: Option<f32>) {
-        let tetha: f32 = tetha.unwrap_or(PI/2f32);
+        let tetha: f32 = tetha.unwrap_or(PI / 2f32);
 
         self.rotate(tetha)
     }
@@ -65,8 +70,8 @@ impl Tetromino {
         let n = self.stride;
         let m = self.shape.len() as u8 / n;
 
-        let new_n = ((m as f32 * sin).abs() + (n as f32 * cos).abs()).ceil() as u8;
-        let new_m = ((m as f32 * cos).abs() + (n as f32 * sin).abs()).ceil() as u8;
+        let new_n = ((m as f32 * sin).abs() + (n as f32 * cos).abs()).round() as u8;
+        let new_m = ((m as f32 * cos).abs() + (n as f32 * sin).abs()).round() as u8;
 
         let mut new_shape = vec![false; (new_n * new_m) as usize];
 
@@ -78,20 +83,32 @@ impl Tetromino {
                     continue;
                 }
 
-                let new_x = ((x + 1) as f32 * cos - (m - y) as f32 * sin + m as f32).round().abs();
-                let new_y = n as f32 - ((x + 1) as f32 * sin + (m - y) as f32 * cos).round().abs();
+                let new_x = ((x + 1) as f32 * cos - (m - y) as f32 * sin + m as f32).round();
+                let new_y = n as f32 - ((x + 1) as f32 * sin + (m - y) as f32 * cos).round();
 
                 let j = (new_x + new_y * new_n as f32).round().abs() as f32;
 
-                alert(&format!("[{x};{y}]\t[{new_x};{new_y}]"));
+                //alert(&format!("[{x};{y}]\t[{new_x};{new_y}]"));
 
-                alert(&format!("{j}"));
+                //alert(&format!("{j}"));
                 new_shape[j as usize] = true;
             }
         }
 
         self.shape = new_shape;
         self.stride = new_n;
+    }
+
+    pub fn width(&self) -> u8 {
+        self.stride
+    }
+
+    pub fn height(&self) -> u8 {
+        self.shape.len() as u8 / self.stride
+    }
+
+    pub fn test_pos(&self, pos: usize) -> bool {
+        self.shape[pos]
     }
 
     pub fn render(&self) -> String {
@@ -120,6 +137,7 @@ const MAX: u8 = 8;
 
 #[wasm_bindgen]
 pub struct Game {
+    id: usize,
     stride: u8,
     field: Vec<Option<usize>>,
 }
@@ -130,17 +148,78 @@ impl Game {
         let f = vec![None; (w * h) as usize];
 
         Self {
+            id: 1,
             stride: w,
             field: f,
         }
     }
 
-    pub fn rnd_shape(&self, lvl: u8) -> Result<Tetromino, Error> {
+    pub fn put_teterino(&mut self, lvl: Option<u8>) -> Result<bool, Error> {
+        let lvl = lvl.unwrap_or(rnd());
+
+        let mut shape = self.rnd_teterino(lvl)?;
+
+        for _ in 0..floor(random() * 4.0) as u8 {
+            shape.rotate_deg(Some(90.0));
+        }
+
+        alert(&format!("i={}\tj={}\tk={}\nl={}",
+                       self.height() - shape.height(),
+                       self.width() - shape.width(),
+                       shape.height(), shape.width()));
+        alert(&format!("i={}\tj={}\tk={}\nl={}",
+                       self.height(), self.width(),
+                       shape.height(), shape.width()));
+        alert(&shape.render());
+
+        for _ in 0..4 {
+            for i in 0..self.height()/* - shape.height()*/ {
+                'next: for j in 0..self.width()/* - shape.width()*/ {
+                    for k in 0..shape.height() {
+                        for l in 0..shape.width() {
+                            let pos: usize = (j + l + (i + k) * self.width()) as usize;
+
+                            if self.field.len() <= pos || (self.field[pos].is_some() && shape.test_pos((l + k * shape.width()) as usize)){
+                                continue 'next;
+                            }
+
+                            if k == shape.height() - 1 && l == shape.width() - 1 {
+                                self.put_shape(Pos { x: j, y: i }, shape);
+
+                                return Ok(true);
+                            }
+                        }
+                    }
+                }
+            }
+
+            shape.rotate_deg(Some(90.0));
+        }
+
+        Err(Error::new(&format!("could not insert teterino lvl {lvl}")))
+    }
+
+    fn put_shape(&mut self, coords: Pos, shape: Tetromino) {
+        for i in 0..shape.height() {
+            for j in 0..shape.width() {
+                let pos = j + i * shape.width();
+
+                if shape.test_pos(pos as usize) {
+                    let pos = j + coords.x + (i + coords.y) * self.width();
+                    self.field[pos as usize] = Some(self.id);
+                }
+            }
+        }
+
+        self.id += 1;
+    }
+
+    pub fn rnd_teterino(&self, lvl: u8) -> Result<Tetromino, Error> {
         if lvl < MIN || lvl > MAX {
             return Err(Error::new("invalid lvl"));
         }
 
-        let gh = self.field.len() as u8 / self.stride;
+        let gh = self.height();
         let mw = if lvl > self.stride { self.stride } else { lvl };
         let mh = if lvl > gh { gh } else { lvl };
 
@@ -231,6 +310,14 @@ impl Game {
         })
     }
 
+    pub fn width(&self) -> u8 {
+        self.stride
+    }
+
+    pub fn height(&self) -> u8 {
+        self.field.len() as u8 / self.stride
+    }
+
     pub fn render(&self) -> String {
         self.to_string()
     }
@@ -247,4 +334,8 @@ impl Display for Game {
 
         Ok(())
     }
+}
+
+fn rnd() -> u8 {
+    floor(random() * (MAX - MIN - 1) as f64 + 1.0) as u8
 }
